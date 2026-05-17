@@ -1,7 +1,10 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import MainLayout from "./components/layout/MainLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 import { useAuth } from "./context/AuthContext";
+
 import DashboardPage from "./pages/DashboardPage";
 import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
@@ -9,20 +12,6 @@ import ProfilePage from "./pages/ProfilePage";
 import TaskCreatePage from "./pages/TaskCreatePage";
 import TaskDetailsPage from "./pages/TaskDetailsPage";
 import TasksPage from "./pages/TasksPage";
-
-function ProtectedRoute({ children }) {
-  const { isLoggedIn, isAuthLoading } = useAuth();
-
-  if (isAuthLoading) {
-    return <div style={{ padding: "30px", color: "white" }}>Lade...</div>;
-  }
-
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
-}
 
 function PublicRoute({ children }) {
   const { isLoggedIn, isAuthLoading } = useAuth();
@@ -53,7 +42,7 @@ export default function App() {
 
         <Route
           element={
-            <ProtectedRoute>
+            <ProtectedRoute minLevel={1}>
               <MainLayout />
             </ProtectedRoute>
           }

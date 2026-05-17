@@ -1,22 +1,60 @@
 import { createContext, useContext, useEffect, useState } from "react";
+
 import { supabase } from "../services/supabase/client";
+import { createMyProfileIfMissing } from "../services/supabase/profiles";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  useEffect(() => {
-    async function loadSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+  async function loadProfile(currentUser) {
+    if (!currentUser) {
+      setProfile(null);
+      return;
+    }
 
-      setSession(session);
-      setUser(session?.user ?? null);
-      setIsAuthLoading(false);
+    try {
+      const profileData = await createMyProfileIfMissing();
+      setProfile(profileData);
+    } catch (error) {
+      console.error("Profil konnte nicht geladen werden:", error.message);
+      setProfile(null);
+    }
+  }
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSession() {
+      try {
+        setIsAuthLoading(true);
+
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!isMounted) return;
+
+        const currentUser = session?.user ?? null;
+
+        setSession(session);
+        setUser(currentUser);
+
+        await loadProfile(currentUser);
+      } catch (error) {
+        console.error("Session konnte nicht geladen werden:", error.message);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (isMounted) {
+          setIsAuthLoading(false);
+        }
+      }
     }
 
     loadSession();
@@ -24,12 +62,20 @@ export function AuthProvider({ children }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      const currentUser = session?.user ?? null;
+
       setSession(session);
-      setUser(session?.user ?? null);
+      setUser(currentUser);
+
+      setTimeout(() => {
+        loadProfile(currentUser);
+      }, 0);
+
       setIsAuthLoading(false);
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -39,7 +85,9 @@ export function AuthProvider({ children }) {
       value={{
         user,
         session,
+        profile,
         isAuthLoading,
+        loading: isAuthLoading,
         isLoggedIn: Boolean(user),
       }}
     >

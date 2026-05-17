@@ -1,7 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import MainLayout from "./components/layout/MainLayout";
-import ProtectedRoute from "./components/ProtectedRoute";
 
 import { useAuth } from "./context/AuthContext";
 
@@ -40,13 +39,7 @@ export default function App() {
           }
         />
 
-        <Route
-          element={
-            <ProtectedRoute minLevel={1}>
-              <MainLayout />
-            </ProtectedRoute>
-          }
-        >
+        <Route element={<MainLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/tasks/new" element={<TaskCreatePage />} />

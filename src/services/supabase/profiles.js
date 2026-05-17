@@ -37,8 +37,44 @@ export async function createMyProfileIfMissing() {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (existingProfile) {
+  if (existingProfile?.company_id) {
     return existingProfile;
+  }
+
+  const companyName = `${user.email}'s Firma`;
+
+  const { data: company, error: companyError } = await supabase
+    .from("companies")
+    .insert({
+      name: companyName,
+      created_by: user.id,
+    })
+    .select()
+    .single();
+
+  if (companyError) {
+    throw new Error(companyError.message);
+  }
+
+  if (existingProfile) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({
+        company_id: company.id,
+        full_name: user.email,
+        role_name: "Admin",
+        role_level: 10,
+        role: "admin",
+      })
+      .eq("id", user.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data;
   }
 
   const { data, error } = await supabase
@@ -46,7 +82,11 @@ export async function createMyProfileIfMissing() {
     .insert({
       id: user.id,
       email: user.email,
-      role: "worker",
+      company_id: company.id,
+      full_name: user.email,
+      role_name: "Admin",
+      role_level: 10,
+      role: "admin",
     })
     .select()
     .single();

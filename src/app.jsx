@@ -2,7 +2,6 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import MainLayout from "./components/layout/MainLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
-
 import { useAuth } from "./context/AuthContext";
 
 import DashboardPage from "./pages/DashboardPage";
@@ -13,16 +12,13 @@ import TaskCreatePage from "./pages/TaskCreatePage";
 import TaskDetailsPage from "./pages/TaskDetailsPage";
 import TasksPage from "./pages/TasksPage";
 import UsersPage from "./pages/UsersPage";
+import AcceptInvitationPage from "./pages/AcceptInvitationPage";
 
 function PublicRoute({ children }) {
   const { isLoggedIn, isAuthLoading } = useAuth();
 
   if (isAuthLoading) {
-    return (
-      <div style={{ padding: "30px", color: "white" }}>
-        Lade...
-      </div>
-    );
+    return <div style={{ padding: "30px", color: "white" }}>Lade...</div>;
   }
 
   if (isLoggedIn) {
@@ -36,6 +32,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/invite" element={<AcceptInvitationPage />} />
+        <Route path="/invite/:token" element={<AcceptInvitationPage />} />
+
         <Route
           path="/login"
           element={
@@ -69,11 +68,7 @@ export default function App() {
           <Route path="/users" element={<UsersPage />} />
         </Route>
 
-        <Route
-          path="/dashboard"
-          element={<Navigate to="/" replace />}
-        />
-
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>

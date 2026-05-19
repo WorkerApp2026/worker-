@@ -11,14 +11,20 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     async function initializeAuth() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      setIsAuthLoading(false);
+        setSession(session);
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error("Auth-Fehler:", error.message);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setIsAuthLoading(false);
+      }
     }
 
     initializeAuth();

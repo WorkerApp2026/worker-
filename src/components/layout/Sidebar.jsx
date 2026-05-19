@@ -29,8 +29,6 @@ export default function Sidebar() {
     loadProfile();
   }, [user]);
 
-  const userCanManageUsers = canManageUsers(profile);
-
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -71,7 +69,7 @@ export default function Sidebar() {
           Neue Aufgabe
         </NavLink>
 
-        {userCanManageUsers && (
+        {canManageUsers(profile) && (
           <NavLink
             to="/users"
             className={({ isActive }) =>

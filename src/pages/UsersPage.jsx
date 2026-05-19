@@ -1,144 +1,163 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { supabase } from "../services/supabase/client";
 
-import { useAuth } from "../context/AuthContext";
-import { createMyProfileIfMissing } from "../services/supabase/profiles";
-import {
-  getCompanyUsers,
-  updateUserRoleLevel,
-} from "../services/supabase/users";
+import InviteUserForm from "../components/users/InviteUserForm";
+
 import { canManageUsers } from "../utils/permissions";
 
+import { useAuth } from "../context/AuthContext";
+
 export default function UsersPage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [users, setUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [savingUserId, setSavingUserId] = useState(null);
 
-  const userCanManageUsers = canManageUsers(profile);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadUsers();
+    loadData();
   }, []);
 
-  async function loadUsers() {
+  async function loadData() {
     try {
       setIsLoading(true);
 
-      const profileData = await createMyProfileIfMissing();
-      setProfile(profileData);
+      const { data: currentProfile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
 
-      if (!canManageUsers(profileData)) {
-        navigate("/", { replace: true });
+      setProfile(currentProfile);
+
+      if (!currentProfile?.company_id) {
         return;
       }
 
-      const companyUsers = await getCompanyUsers(profileData?.company_id);
-      setUsers(companyUsers);
-    } catch (error) {
-      alert(error.message);
+      const { data: companyUsers } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("company_id", currentProfile.company_id)
+        .order("role_level", { ascending: false });
+
+      setUsers(companyUsers || []);
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function handleRoleLevelChange(employeeId, newLevel) {
-    if (!userCanManageUsers) {
-      alert("Du hast keine Berechtigung, Benutzer zu bearbeiten.");
-      return;
-    }
+  function getRoleName(level) {
+    if (level >= 10) return "Super Admin";
+    if (level >= 8) return "Admin";
+    if (level >= 5) return "Manager";
 
-    try {
-      setSavingUserId(employeeId);
-
-      await updateUserRoleLevel(employeeId, newLevel);
-      await loadUsers();
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setSavingUserId(null);
-    }
+    return "Mitarbeiter";
   }
 
   if (isLoading) {
-    return (
-      <div>
-        <h1>Benutzerverwaltung</h1>
-        <p>Lade Mitarbeiter...</p>
-      </div>
-    );
+    return <div>Lade Benutzer...</div>;
   }
 
   return (
-    <div>
+    <div className="page-content">
       <div className="page-header">
-        <div>
-          <h1>Benutzerverwaltung</h1>
-          <p>Mitarbeiter, Rollen und Rechte deiner Firma.</p>
-        </div>
+        <h1>Benutzerverwaltung</h1>
+
+        <p>
+          Mitarbeiter, Rollen und Rechte deiner Firma.
+        </p>
       </div>
 
-      <div className="app-form-card">
+      {canManageUsers(profile?.role_level) && (
+        <InviteUserForm />
+      )}
+
+      {!canManageUsers(profile?.role_level) && (
+        <div className="content-card">
+          <h2>Keine Bearbeitungsrechte</h2>
+
+          <p>
+            Du kannst Mitarbeiter ansehen, aber keine
+            Level ändern.
+          </p>
+        </div>
+      )}
+
+      <div className="content-card">
         <h2>Mitarbeiter</h2>
 
-        <div className="profile-info-list">
-          {users.length === 0 ? (
-            <p>Noch keine Mitarbeiter gefunden.</p>
-          ) : (
-            users.map((employee) => (
-              <div key={employee.id} className="profile-info-row">
-                <span className="profile-info-label">
-                  {employee.full_name || employee.email || "Unbekannt"}
-                </span>
-
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            marginTop: "20px",
+          }}
+        >
+          {users.map((companyUser) => (
+            <div
+              key={companyUser.id}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "18px",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "12px",
+                background:
+                  "rgba(255,255,255,0.03)",
+              }}
+            >
+              <div>
                 <strong>
-                  {employee.role_name || employee.role || "Mitarbeiter"}
+                  {companyUser.email}
                 </strong>
-
-                <select
-                  value={employee.role_level ?? 1}
-                  disabled={savingUserId === employee.id}
-                  onChange={(event) =>
-                    handleRoleLevelChange(employee.id, event.target.value)
-                  }
-                >
-                  <option value="1">Level 1</option>
-                  <option value="2">Level 2</option>
-                  <option value="3">Level 3</option>
-                  <option value="4">Level 4</option>
-                  <option value="5">Level 5</option>
-                  <option value="6">Level 6</option>
-                  <option value="7">Level 7</option>
-                  <option value="8">Level 8</option>
-                  <option value="9">Level 9</option>
-                  <option value="10">Level 10</option>
-                </select>
               </div>
-            ))
-          )}
+
+              <div>
+                {getRoleName(
+                  companyUser.role_level
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="app-form-card" style={{ marginTop: "24px" }}>
+      <div className="content-card">
         <h2>Aktueller Benutzer</h2>
 
-        <div className="profile-info-list">
-          <div className="profile-info-row">
-            <span className="profile-info-label">E-Mail</span>
-            <strong>{user?.email || "Nicht bekannt"}</strong>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            marginTop: "20px",
+          }}
+        >
+          <div className="profile-row">
+            <span>E-Mail</span>
+
+            <strong>{profile?.email}</strong>
           </div>
 
-          <div className="profile-info-row">
-            <span className="profile-info-label">Dein Level</span>
-            <strong>{profile?.role_level ?? 1}</strong>
+          <div className="profile-row">
+            <span>Dein Level</span>
+
+            <strong>
+              {profile?.role_level}
+            </strong>
           </div>
 
-          <div className="profile-info-row">
-            <span className="profile-info-label">Benutzer bearbeiten</span>
-            <strong>{userCanManageUsers ? "Ja" : "Nein"}</strong>
+          <div className="profile-row">
+            <span>Benutzer bearbeiten</span>
+
+            <strong>
+              {canManageUsers(profile?.role_level)
+                ? "Ja"
+                : "Nein"}
+            </strong>
           </div>
         </div>
       </div>

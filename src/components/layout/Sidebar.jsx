@@ -1,6 +1,36 @@
+import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 
+import { useAuth } from "../../context/AuthContext";
+import { createMyProfileIfMissing } from "../../services/supabase/profiles";
+import { canManageUsers } from "../../utils/permissions";
+
 export default function Sidebar() {
+  const { user } = useAuth();
+
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (!user) {
+        setProfile(null);
+        return;
+      }
+
+      try {
+        const profileData = await createMyProfileIfMissing();
+        setProfile(profileData);
+      } catch (error) {
+        console.error("Profil konnte nicht geladen werden:", error.message);
+        setProfile(null);
+      }
+    }
+
+    loadProfile();
+  }, [user]);
+
+  const userCanManageUsers = canManageUsers(profile);
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -40,6 +70,17 @@ export default function Sidebar() {
         >
           Neue Aufgabe
         </NavLink>
+
+        {userCanManageUsers && (
+          <NavLink
+            to="/users"
+            className={({ isActive }) =>
+              `sidebar__link ${isActive ? "sidebar__link--active" : ""}`
+            }
+          >
+            Benutzer
+          </NavLink>
+        )}
 
         <NavLink
           to="/profile"

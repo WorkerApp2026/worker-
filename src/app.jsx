@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import MainLayout from "./components/layout/MainLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 import { useAuth } from "./context/AuthContext";
 
@@ -11,12 +12,17 @@ import ProfilePage from "./pages/ProfilePage";
 import TaskCreatePage from "./pages/TaskCreatePage";
 import TaskDetailsPage from "./pages/TaskDetailsPage";
 import TasksPage from "./pages/TasksPage";
+import UsersPage from "./pages/UsersPage";
 
 function PublicRoute({ children }) {
   const { isLoggedIn, isAuthLoading } = useAuth();
 
   if (isAuthLoading) {
-    return <div style={{ padding: "30px", color: "white" }}>Lade...</div>;
+    return (
+      <div style={{ padding: "30px", color: "white" }}>
+        Lade...
+      </div>
+    );
   }
 
   if (isLoggedIn) {
@@ -39,7 +45,13 @@ export default function App() {
           }
         />
 
-        <Route element={<MainLayout />}>
+        <Route
+          element={
+            <ProtectedRoute minLevel={1}>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/tasks/new" element={<TaskCreatePage />} />
@@ -47,7 +59,21 @@ export default function App() {
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
-        <Route path="/dashboard" element={<Navigate to="/" replace />} />
+        <Route
+          element={
+            <ProtectedRoute minLevel={8}>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/users" element={<UsersPage />} />
+        </Route>
+
+        <Route
+          path="/dashboard"
+          element={<Navigate to="/" replace />}
+        />
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
